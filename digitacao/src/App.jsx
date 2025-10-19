@@ -3,6 +3,14 @@ import "./App.css";
 
 const SAMPLE_TEXT = `O rato roeu a roupa do rei de Roma. Digite este texto o mais rápido possível. Continue praticando para melhorar sua habilidade e rapidez na digitação. Aprender a digitar rápido ajuda a produtividade e concentração. Continue praticando todos os dias para se tornar cada vez mais eficiente. Este é um texto longo para testar a rolagem automática e a responsividade em dispositivos móveis. Lembre-se de manter a postura correta e os dedos na posição certa para evitar erros.`.repeat(3);
 
+// Função auxiliar para remover acentos e padronizar
+function normalizeText(str) {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 export default function App() {
   const [words, setWords] = useState(SAMPLE_TEXT.replace(/\n/g, " ").split(" "));
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
@@ -41,16 +49,10 @@ export default function App() {
     return () => clearInterval(timer);
   }, [started, finished, paused]);
 
+  // Mantém foco no input
   useEffect(() => {
-    if (!started) return;
-    const interval = setInterval(() => {
-      const elapsedMinutes = Math.max((duration - timeLeft) / 60, 1/60);
-      setWpm(Math.round(correctWords / elapsedMinutes));
-      setLpm(Math.round(correctLetters / elapsedMinutes));
-      setAccuracy(Math.round((correctWords / (currentWordIndex || 1)) * 100));
-    }, 200);
-    return () => clearInterval(interval);
-  }, [started, timeLeft, correctWords, correctLetters, currentWordIndex]);
+    if (started && !paused && !finished) inputRef.current?.focus();
+  }, [started, paused, finished]);
 
   function startTest() {
     setStarted(true);
@@ -71,9 +73,11 @@ export default function App() {
     setFinished(true);
     setStarted(false);
 
-    const elapsedMinutes = Math.max((duration - timeLeft) / 60, 1/60);
+    const secondsElapsed = Math.max(duration - timeLeft, 1);
+    const elapsedMinutes = secondsElapsed / 60;
+
     setWpm(Math.round(correctWords / elapsedMinutes));
-    setLpm(Math.round(correctLetters / elapsedMinutes));
+    setLpm(Math.round((correctLetters / secondsElapsed) * 60));
     setAccuracy(Math.round((correctWords / (currentWordIndex || 1)) * 100));
   }
 
@@ -89,15 +93,34 @@ export default function App() {
   }
 
   function handleSpacePress(e) {
-    if (e.key === " " && !finished && !paused) {
+    if (
+      (e.key === " " || e.code === "Space" || e.key === "Spacebar") &&
+      !finished &&
+      !paused
+    ) {
       e.preventDefault();
       const trimmed = input.trim();
-      const currentWord = words[currentWordIndex];
-      const correct = trimmed === currentWord;
+      const normalizedInput = normalizeText(trimmed);
+      const normalizedWord = normalizeText(words[currentWordIndex]);
+
+      const correct = normalizedInput === normalizedWord;
 
       if (correct) {
+        // Atualiza contadores
         setCorrectWords((c) => c + 1);
         setCorrectLetters((l) => l + trimmed.length + 1);
+
+        // Atualiza métricas em tempo real
+        const secondsElapsed = Math.max(duration - timeLeft, 1);
+        const elapsedMinutes = secondsElapsed / 60;
+        const nextCorrectWords = correctWords + 1;
+        const nextCorrectLetters = correctLetters + trimmed.length + 1;
+
+        setWpm(Math.round(nextCorrectWords / elapsedMinutes));
+        setLpm(Math.round((nextCorrectLetters / secondsElapsed) * 60));
+        setAccuracy(Math.round((nextCorrectWords / (currentWordIndex + 1)) * 100));
+
+        // Avança
         setCurrentWordIndex((i) => i + 1);
         setInput("");
 
@@ -115,7 +138,11 @@ export default function App() {
   }
 
   const currentWord = words[currentWordIndex];
-  const isWrong = input.trim() && !currentWord.startsWith(input.trim());
+  const normalizedInput = normalizeText(input.trim());
+  const normalizedCurrentWord = normalizeText(currentWord);
+  const isWrong =
+    normalizedInput &&
+    !normalizedCurrentWord.startsWith(normalizedInput);
 
   return (
     <div className="app-container">
@@ -159,6 +186,8 @@ export default function App() {
           onKeyDown={handleSpacePress}
           disabled={finished || paused}
           placeholder={paused ? "PAUSADO" : "Digite aqui..."}
+          autoCapitalize="none"
+          autoCorrect="off"
         />
 
         <div className="buttons">
