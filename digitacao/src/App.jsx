@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import "./App.css";
 
-const SAMPLE_TEXT = `O rato roeu a roupa do rei de Roma. Digite este texto o mais rápido possível. Continue praticando para melhorar sua habilidade e rapidez na digitação. Aprender a digitar rápido ajuda a produtividade e concentração. Continue praticando todos os dias para se tornar cada vez mais eficiente.`.repeat(2);
+const SAMPLE_TEXT = `O rato roeu a roupa do rei de Roma. Digite este texto o mais rápido possível. Continue praticando para melhorar sua habilidade e rapidez na digitação. Aprender a digitar rápido ajuda a produtividade e concentração. Continue praticando todos os dias para se tornar cada vez mais eficiente. `.repeat(
+  2
+);
 
 function normalizeText(str) {
   return str
@@ -11,7 +13,7 @@ function normalizeText(str) {
 }
 
 export default function App() {
-  const [words, setWords] = useState(SAMPLE_TEXT.split(" "));
+  const [words] = useState(SAMPLE_TEXT.split(" "));
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [input, setInput] = useState("");
   const [started, setStarted] = useState(false);
@@ -22,31 +24,52 @@ export default function App() {
 
   const [correctWords, setCorrectWords] = useState(0);
   const [correctLetters, setCorrectLetters] = useState(0);
+  const [totalTyped, setTotalTyped] = useState(0);
 
   const [wpm, setWpm] = useState(0);
   const [lpm, setLpm] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
+  const [isWrong, setIsWrong] = useState(false);
 
   const inputRef = useRef(null);
-  const textRef = useRef(null);
+  const textContainerRef = useRef(null);
+  const intervalRef = useRef(null);
 
-  // Timer
+  // TIMER
   useEffect(() => {
-    let timer;
-    if (started && !finished && !paused) {
-      timer = setInterval(() => {
-        setTimeLeft((t) => {
-          if (t <= 1) {
-            clearInterval(timer);
-            endTest(correctWords, correctLetters, currentWordIndex);
+    if (started && !paused && !finished) {
+      intervalRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(intervalRef.current);
+            endTest();
             return 0;
           }
-          return t - 1;
+          return prev - 1;
         });
       }, 1000);
     }
-    return () => clearInterval(timer);
-  }, [started, finished, paused]);
+
+    return () => clearInterval(intervalRef.current);
+  }, [started, paused, finished]);
+
+  // Atualiza métricas em tempo real
+  useEffect(() => {
+    if (started && !finished && timeLeft < duration) {
+      const secondsElapsed = duration - timeLeft;
+      const elapsedMinutes = secondsElapsed / 60;
+
+      const newWpm = Math.round(correctWords / elapsedMinutes) || 0;
+      const newLpm = Math.round((correctLetters / secondsElapsed) * 60) || 0;
+      const acc = Math.round(
+        (correctWords / Math.max(currentWordIndex, 1)) * 100
+      );
+
+      setWpm(newWpm);
+      setLpm(newLpm);
+      setAccuracy(acc);
+    }
+  }, [timeLeft, correctWords, correctLetters, currentWordIndex, started]);
 
   function startTest() {
     setStarted(true);
@@ -56,6 +79,7 @@ export default function App() {
     setInput("");
     setCorrectWords(0);
     setCorrectLetters(0);
+    setTotalTyped(0);
     setAccuracy(100);
     setWpm(0);
     setLpm(0);
@@ -63,62 +87,73 @@ export default function App() {
     inputRef.current?.focus();
   }
 
-  function endTest(cWords = correctWords, cLetters = correctLetters, index = currentWordIndex) {
+  function togglePause() {
+    setPaused((prev) => !prev);
+    if (!paused) inputRef.current?.blur();
+    else inputRef.current?.focus();
+  }
+
+  function endTest() {
+    clearInterval(intervalRef.current);
     setStarted(false);
     setFinished(true);
+  }
 
-    const secondsElapsed = Math.max(duration - timeLeft, 1);
-    const elapsedMinutes = secondsElapsed / 60;
+  function handleInputChange(e) {
+    const val = e.target.value;
+    setInput(val);
 
-    const wpmCalc = Math.round(cWords / elapsedMinutes);
-    const lpmCalc = Math.round((cLetters / secondsElapsed) * 60);
-    const accCalc = Math.round((cWords / (index || 1)) * 100);
+    if (!started || paused || finished) return;
 
-    setWpm(wpmCalc);
-    setLpm(lpmCalc);
-    setAccuracy(accCalc);
+    setTotalTyped((prev) => prev + 1);
+
+    const normalizedInput = normalizeText(val.trim());
+    const normalizedWord = normalizeText(words[currentWordIndex]);
+
+    if (normalizedWord.startsWith(normalizedInput)) {
+      setIsWrong(false);
+    } else {
+      setIsWrong(true);
+    }
   }
 
   function handleSpacePress(e) {
-    if (
-      (e.key === " " || e.code === "Space" || e.key === "Spacebar") &&
-      !finished &&
-      !paused
-    ) {
+    if (e.key === " " || e.code === "Space" || e.key === "Spacebar") {
       e.preventDefault();
+      if (!started || paused || finished) return;
 
       const trimmed = input.trim();
       const normalizedInput = normalizeText(trimmed);
       const normalizedWord = normalizeText(words[currentWordIndex]);
 
-      const correct = normalizedInput === normalizedWord;
-
-      if (correct) {
-        const newCorrectWords = correctWords + 1;
-        const newCorrectLetters = correctLetters + trimmed.length + 1;
-
-        setCorrectWords(newCorrectWords);
-        setCorrectLetters(newCorrectLetters);
-
-        // Atualiza métricas
-        const secondsElapsed = Math.max(duration - timeLeft, 1);
-        const elapsedMinutes = secondsElapsed / 60;
-        const wpmCalc = Math.round(newCorrectWords / elapsedMinutes);
-        const lpmCalc = Math.round((newCorrectLetters / secondsElapsed) * 60);
-        const accCalc = Math.round((newCorrectWords / (currentWordIndex + 1)) * 100);
-
-        setWpm(wpmCalc);
-        setLpm(lpmCalc);
-        setAccuracy(accCalc);
+      if (normalizedInput !== normalizedWord) {
+        setIsWrong(true);
+        return;
       }
 
-      // Próxima palavra
+      // ✅ Palavra correta
+      const newCorrectWords = correctWords + 1;
+      const newCorrectLetters = correctLetters + trimmed.length + 1;
+
+      setCorrectWords(newCorrectWords);
+      setCorrectLetters(newCorrectLetters);
+      setIsWrong(false);
+
       const nextIndex = currentWordIndex + 1;
       setCurrentWordIndex(nextIndex);
       setInput("");
 
+      // Scroll automático
+      const container = textContainerRef.current;
+      const active = document.getElementById(`word-${nextIndex}`);
+      if (container && active) {
+        const offsetTop = active.offsetTop - container.offsetTop;
+        if (offsetTop > container.clientHeight - 50)
+          container.scrollTop += 30;
+      }
+
       if (nextIndex >= words.length) {
-        endTest(correctWords + (correct ? 1 : 0), correctLetters + trimmed.length + 1, nextIndex);
+        endTest();
       }
     }
   }
@@ -163,8 +198,14 @@ export default function App() {
           value={input}
           onChange={handleInputChange}
           onKeyDown={handleSpacePress}
-          disabled={finished || paused}
-          placeholder={paused ? "PAUSADO" : "Digite aqui..."}
+          disabled={!started || finished || paused}
+          placeholder={
+            finished
+              ? "Teste finalizado!"
+              : paused
+              ? "PAUSADO"
+              : "Digite aqui..."
+          }
           autoCapitalize="none"
           autoCorrect="off"
         />
@@ -198,7 +239,8 @@ export default function App() {
           <div className="results">
             <p>✅ Teste finalizado!</p>
             <p>
-              Velocidade: {wpm} WPM | Letras por minuto: {lpm} | Precisão: {accuracy}%
+              Velocidade: {wpm} WPM | Letras por minuto: {lpm} | Precisão:{" "}
+              {accuracy}%
             </p>
           </div>
         )}
