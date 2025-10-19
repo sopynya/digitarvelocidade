@@ -125,76 +125,84 @@ export default function App() {
 
   return (
     <div className="app-container">
-      <h1>Teste de Digitação</h1>
+      <div className="typing-box">
+        <h1>Teste de Digitação</h1>
 
-      <div className="time-selector">
-        <label>
-          Tempo:
-          <select
-            value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
-            disabled={started}
-          >
-            <option value={60}>60s</option>
-            <option value={120}>120s</option>
-            <option value={180}>180s</option>
-          </select>
-        </label>
-      </div>
-
-      <div className="text-container" ref={textRef}>
-        {words.map((word, i) => {
-          let className = "word";
-          if (i === currentWordIndex) className += " active";
-          if (i < currentWordIndex) className += " done";
-          return (
-            <span key={i} className={className}>
-              {word}{" "}
-            </span>
-          );
-        })}
-      </div>
-
-      <input
-        ref={inputRef}
-        type="text"
-        className="input-box"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleSpacePress}
-        disabled={finished || paused}
-        placeholder={paused ? "Pausado" : "Digite aqui..."}
-        autoCapitalize="none"
-        autoCorrect="off"
-      />
-
-      <div className="buttons">
-        {!started && !finished && <button onClick={startTest}>Iniciar</button>}
-        {started && !finished && (
-          <button onClick={() => setPaused((p) => !p)}>
-            {paused ? "Retomar" : "Pausar"}
-          </button>
-        )}
-        {finished && <button onClick={startTest}>Reiniciar</button>}
-      </div>
-
-      <div className="stats">
-        <p>⏱️ Tempo: {timeLeft}s</p>
-        <p>⚡ WPM: {wpm}</p>
-        <p>✍️ LPM: {lpm}</p>
-        <p>🎯 Precisão: {accuracy}%</p>
-      </div>
-
-      {finished && (
-        <div className="results">
-          <h3>✅ Resultado Final</h3>
-          <p>Palavras corretas: {correctWords}</p>
-          <p>Letras corretas: {correctLetters}</p>
-          <p>WPM: {wpm}</p>
-          <p>LPM: {lpm}</p>
-          <p>Precisão: {accuracy}%</p>
+        <div className="time-selector">
+          <label>
+            Tempo de teste:
+            <select
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              disabled={started}
+            >
+              <option value={60}>60 segundos</option>
+              <option value={120}>120 segundos</option>
+              <option value={180}>180 segundos</option>
+            </select>
+          </label>
         </div>
-      )}
+
+        <div className="text-container" ref={textContainerRef}>
+          {words.map((word, i) => {
+            let style = "word";
+            if (i === currentWordIndex) style += " active";
+            if (i < currentWordIndex) style += " done";
+            return (
+              <span key={i} id={`word-${i}`} className={style}>
+                {word}{" "}
+              </span>
+            );
+          })}
+        </div>
+
+        <input
+          ref={inputRef}
+          type="text"
+          className={`input-box ${isWrong ? "wrong" : ""}`}
+          value={input}
+          onChange={handleInputChange}
+          onKeyDown={handleSpacePress}
+          disabled={finished || paused}
+          placeholder={paused ? "PAUSADO" : "Digite aqui..."}
+          autoCapitalize="none"
+          autoCorrect="off"
+        />
+
+        <div className="buttons">
+          {!started && !finished && (
+            <button className="start-btn" onClick={startTest}>
+              Iniciar Teste
+            </button>
+          )}
+          {started && !finished && (
+            <button className="pause-btn" onClick={togglePause}>
+              {paused ? "Retomar" : "Pausar"}
+            </button>
+          )}
+          {finished && (
+            <button className="restart-btn" onClick={startTest}>
+              Reiniciar
+            </button>
+          )}
+        </div>
+
+        <div className="stats">
+          <span>⏱️ Tempo: {timeLeft}s</span>
+          <span>⚡ WPM: {wpm}</span>
+          <span>✍️ LPM: {lpm}</span>
+          <span>🎯 Precisão: {accuracy}%</span>
+        </div>
+
+        {finished && (
+          <div className="results">
+            <p>✅ Teste finalizado!</p>
+            <p>
+              Velocidade: {wpm} WPM | Letras por minuto: {lpm} | Precisão: {accuracy}%
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
