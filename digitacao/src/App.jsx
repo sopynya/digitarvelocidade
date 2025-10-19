@@ -1,12 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import "./App.css";
 
-const SAMPLE_TEXT = `O rato roeu a roupa do rei de Roma. Digite este texto o mais rápido possível. 
-Continue praticando para melhorar sua habilidade e rapidez na digitação. 
-Aprender a digitar rápido ajuda a produtividade e concentração. 
-Continue praticando todos os dias para se tornar cada vez mais eficiente. 
-Este é um texto longo para testar a rolagem automática e a responsividade em dispositivos móveis. 
-Lembre-se de manter a postura correta e os dedos na posição certa para evitar erros.`.repeat(3);
+const SAMPLE_TEXT = `O rato roeu a roupa do rei de Roma. Digite este texto o mais rápido possível. Continue praticando para melhorar sua habilidade e rapidez na digitação. Aprender a digitar rápido ajuda a produtividade e concentração. Continue praticando todos os dias para se tornar cada vez mais eficiente. Este é um texto longo para testar a rolagem automática e a responsividade em dispositivos móveis. Lembre-se de manter a postura correta e os dedos na posição certa para evitar erros.`.repeat(3);
 
 export default function App() {
   const [words, setWords] = useState(SAMPLE_TEXT.replace(/\n/g, " ").split(" "));
