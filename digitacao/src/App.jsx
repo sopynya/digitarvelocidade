@@ -41,7 +41,6 @@ export default function App() {
     return () => clearInterval(timer);
   }, [started, finished, paused]);
 
-  // Atualiza WPM/LPM em tempo real
   useEffect(() => {
     if (!started) return;
     const interval = setInterval(() => {
